@@ -1,5 +1,9 @@
 use mirajazz::types::{ImageFormat, ImageMirroring, ImageMode, ImageRotation};
 
+// 153 in hex is 99
+// Must be 2 characters long and match `DeviceNamespace` field in `manifest.json`
+pub const DEVICE_NAMESPACE: &str = "99";
+
 pub const ROW_COUNT: usize = 3;
 pub const COL_COUNT: usize = 6;
 pub const KEY_COUNT: usize = ROW_COUNT * COL_COUNT;
