@@ -1,7 +1,7 @@
 use mirajazz::types::{ImageFormat, ImageMirroring, ImageMode, ImageRotation};
 
 // 153 in hex is 99
-// Must be 2 characters long and match `DeviceNamespace` field in `manifest.json`
+// Must be unique between all the plugins, 2 characters long and match `DeviceNamespace` field in `manifest.json`
 pub const DEVICE_NAMESPACE: &str = "99";
 
 pub const ROW_COUNT: usize = 3;
