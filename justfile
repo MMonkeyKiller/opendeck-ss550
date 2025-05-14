@@ -12,4 +12,4 @@ build:
 
 [working-directory: "build"]
 zip:
-    zip -r opendeck-akp153.sdPlugin {{id}}/
+    zip -r opendeck-akp153.plugin.zip {{id}}/
