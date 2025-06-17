@@ -25,10 +25,12 @@ pub enum Kind {
     AKP153,
     AKP153E,
     AKP153R,
+    GK150K,
 }
 
 pub const AJAZZ_VID: u16 = 0x0300;
 pub const MIRABOX_VID: u16 = 0x5548;
+pub const MADDOG_VID: u16 = 0x0c00;
 
 pub const HSV293S_PID: u16 = 0x6670;
 
@@ -36,12 +38,21 @@ pub const AKP153_PID: u16 = 0x6674;
 pub const AKP153E_PID: u16 = 0x1010;
 pub const AKP153R_PID: u16 = 0x1020;
 
+pub const GK150K_PID: u16 = 0x1000;
+
 pub const HSV293S_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, MIRABOX_VID, HSV293S_PID);
 pub const AKP153_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153_PID);
 pub const AKP153E_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153E_PID);
 pub const AKP153R_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153R_PID);
+pub const GK150K_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, MADDOG_VID, GK150K_PID);
 
-pub const QUERIES: [DeviceQuery; 4] = [HSV293S_QUERY, AKP153_QUERY, AKP153E_QUERY, AKP153R_QUERY];
+pub const QUERIES: [DeviceQuery; 5] = [
+    HSV293S_QUERY,
+    AKP153_QUERY,
+    AKP153E_QUERY,
+    AKP153R_QUERY,
+    GK150K_QUERY,
+];
 
 impl Kind {
     /// Matches devices VID+PID pairs to correct kinds
@@ -56,6 +67,11 @@ impl Kind {
 
             MIRABOX_VID => match pid {
                 HSV293S_PID => Some(Kind::HSV293S),
+                _ => None,
+            },
+
+            MADDOG_VID => match pid {
+                GK150K_PID => Some(Kind::GK150K),
                 _ => None,
             },
 
@@ -77,6 +93,7 @@ impl Kind {
             Self::AKP153E => "Ajazz AKP153E",
             Self::AKP153R => "Ajazz AKP153R",
             Self::HSV293S => "Mirabox HSV293S",
+            Self::GK150K => "Mad Dog GK150K",
         }
         .to_string()
     }
