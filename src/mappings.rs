@@ -1,4 +1,4 @@
-use mirajazz::types::{ImageFormat, ImageMirroring, ImageMode, ImageRotation};
+use mirajazz::types::{DeviceInfo, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
 
 // 153 in hex is 99
 // Must be unique between all the plugins, 2 characters long and match `DeviceNamespace` field in `manifest.json`
@@ -74,8 +74,6 @@ impl Kind {
 #[derive(Debug)]
 pub struct CandidateDevice {
     pub id: String,
-    pub vid: u16,
-    pub pid: u16,
-    pub serial: String,
+    pub info: DeviceInfo,
     pub kind: Kind,
 }
