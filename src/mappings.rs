@@ -1,4 +1,7 @@
-use mirajazz::types::{DeviceInfo, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
+use mirajazz::{
+    device::DeviceQuery,
+    types::{HidDeviceInfo, ImageFormat, ImageMirroring, ImageMode, ImageRotation},
+};
 
 // 153 in hex is 99
 // Must be unique between all the plugins, 2 characters long and match `DeviceNamespace` field in `manifest.json`
@@ -7,6 +10,7 @@ pub const DEVICE_NAMESPACE: &str = "99";
 pub const ROW_COUNT: usize = 3;
 pub const COL_COUNT: usize = 6;
 pub const KEY_COUNT: usize = ROW_COUNT * COL_COUNT;
+pub const ENCODER_COUNT: usize = 0;
 
 pub const IMAGE_FORMAT: ImageFormat = ImageFormat {
     mode: ImageMode::JPEG,
@@ -31,6 +35,13 @@ pub const HSV293S_PID: u16 = 0x6670;
 pub const AKP153_PID: u16 = 0x6674;
 pub const AKP153E_PID: u16 = 0x1010;
 pub const AKP153R_PID: u16 = 0x1020;
+
+pub const HSV293S_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, MIRABOX_VID, HSV293S_PID);
+pub const AKP153_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153_PID);
+pub const AKP153E_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153E_PID);
+pub const AKP153R_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153R_PID);
+
+pub const QUERIES: [DeviceQuery; 4] = [HSV293S_QUERY, AKP153_QUERY, AKP153E_QUERY, AKP153R_QUERY];
 
 impl Kind {
     /// Matches devices VID+PID pairs to correct kinds
@@ -71,9 +82,9 @@ impl Kind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CandidateDevice {
     pub id: String,
-    pub info: DeviceInfo,
+    pub dev: HidDeviceInfo,
     pub kind: Kind,
 }
