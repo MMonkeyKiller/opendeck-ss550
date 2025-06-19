@@ -40,11 +40,12 @@ pub const AKP153R_PID: u16 = 0x1020;
 
 pub const GK150K_PID: u16 = 0x1000;
 
-pub const HSV293S_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, MIRABOX_VID, HSV293S_PID);
-pub const AKP153_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153_PID);
-pub const AKP153E_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153E_PID);
-pub const AKP153R_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, AJAZZ_VID, AKP153R_PID);
-pub const GK150K_QUERY: DeviceQuery = DeviceQuery::new(65440, 2, MADDOG_VID, GK150K_PID);
+// Map all queries to usage page 65440 and usage id 1 for now
+pub const HSV293S_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, MIRABOX_VID, HSV293S_PID);
+pub const AKP153_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, AJAZZ_VID, AKP153_PID);
+pub const AKP153E_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, AJAZZ_VID, AKP153E_PID);
+pub const AKP153R_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, AJAZZ_VID, AKP153R_PID);
+pub const GK150K_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, MADDOG_VID, GK150K_PID);
 
 pub const QUERIES: [DeviceQuery; 5] = [
     HSV293S_QUERY,
