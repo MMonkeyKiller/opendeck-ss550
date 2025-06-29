@@ -13,12 +13,29 @@ use crate::{
     mappings::{CandidateDevice, DEVICE_NAMESPACE, Kind, QUERIES},
 };
 
-fn serial_to_id(serial: &String) -> String {
-    format!("{}-{}", DEVICE_NAMESPACE, serial)
+fn get_device_id(dev: &HidDeviceInfo) -> Option<String> {
+    let kind = Kind::from_vid_pid(dev.vendor_id, dev.product_id)?;
+
+    match kind.is_v2() {
+        true => Some(format!(
+            "{}-{}",
+            DEVICE_NAMESPACE,
+            dev.serial_number.clone()?,
+        )),
+        false => {
+            // All the "v1" devices share the same serial. Hardcode it because Windows returns invalid serial for them
+            // Also suffix v1 devices with the
+            Some(format!(
+                "{}-355499441494-{}",
+                DEVICE_NAMESPACE,
+                kind.id_suffix()
+            ))
+        }
+    }
 }
 
 fn device_info_to_candidate(dev: HidDeviceInfo) -> Option<CandidateDevice> {
-    let id = serial_to_id(&dev.serial_number.clone()?);
+    let id = get_device_id(&dev)?;
     let kind = Kind::from_vid_pid(dev.vendor_id, dev.product_id)?;
 
     Some(CandidateDevice { id, dev, kind })
@@ -97,7 +114,7 @@ pub async fn watcher_task(token: CancellationToken) -> Result<(), MirajazzError>
                     }
                 }
                 DeviceLifecycleEvent::Disconnected(info) => {
-                    let id = serial_to_id(&info.serial_number.unwrap());
+                    let id = get_device_id(&info).unwrap();
 
                     if let Some(token) = TOKENS.write().await.remove(&id) {
                         log::info!("Sending cancel request for {}", id);

@@ -102,6 +102,19 @@ impl Kind {
         }
         .to_string()
     }
+
+    /// Because "v1" devices all share the same serial number, use custom suffix to be able to connect
+    /// two devices with the different revisions at the same time
+    pub fn id_suffix(&self) -> String {
+        match &self {
+            Self::AKP153 => "153",
+            Self::AKP153E => "153E",
+            Self::AKP153R => "153R",
+            Self::HSV293S => "293S",
+            Self::GK150K => "GK150K",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Debug, Clone)]
