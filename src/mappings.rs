@@ -86,6 +86,10 @@ impl Kind {
         false
     }
 
+    pub fn is_v2(&self) -> bool {
+        false // In the future there may be "v2" devices, so lay some groundwork
+    }
+
     /// There is no point relying on manufacturer/device names reported by the USB stack,
     /// so we return custom names for all the kinds of devices
     pub fn human_name(&self) -> String {
