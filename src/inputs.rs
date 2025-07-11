@@ -24,7 +24,7 @@ fn read_button_states(states: &[u8]) -> Vec<bool> {
 /// Converts opendeck key index to device key index
 pub fn opendeck_to_device(key: u8) -> u8 {
     if key < KEY_COUNT as u8 {
-        [12, 9, 6, 3, 0, 15, 13, 10, 7, 4, 1, 16, 14, 11, 8, 5, 2, 17][key as usize]
+        [10, 11, 12, 13, 14, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4][key as usize]
     } else {
         key
     }
@@ -32,13 +32,7 @@ pub fn opendeck_to_device(key: u8) -> u8 {
 
 /// Converts device key index to opendeck key index
 pub fn device_to_opendeck(key: usize) -> usize {
-    let key = key - 1; // We have to subtract 1 from key index reported by device, because list is shifted by 1
-
-    if key < KEY_COUNT {
-        [4, 10, 16, 3, 9, 15, 2, 8, 14, 1, 7, 13, 0, 6, 12, 5, 11, 17][key]
-    } else {
-        key
-    }
+    key - 1 // We have to subtract 1 from key index reported by device, because list is shifted by 1
 }
 
 fn read_button_press(input: u8, state: u8) -> Result<DeviceInput, MirajazzError> {
