@@ -5,7 +5,7 @@ use mirajazz::{
 
 // 153 in hex is 99
 // Must be unique between all the plugins, 2 characters long and match `DeviceNamespace` field in `manifest.json`
-pub const DEVICE_NAMESPACE: &str = "99";
+pub const DEVICE_NAMESPACE: &str = "50";
 
 pub const ROW_COUNT: usize = 3;
 pub const COL_COUNT: usize = 6;

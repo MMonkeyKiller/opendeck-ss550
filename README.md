@@ -1,8 +1,8 @@
 ![Plugin Icon](assets/icon.png)
 
-# OpenDeck Ajazz AKP153 / Mirabox HSV293 Plugin
+# OpenDeck Redragon Streamcraft SS550 Plugin
 
-An unofficial plugin for Mirabox HSV293-family devices
+An unofficial plugin for Redragon Streamcraft SS550
 
 ## OpenDeck version
 
@@ -10,10 +10,7 @@ Requires OpenDeck 2.5.0 or newer
 
 ## Supported devices
 
-- Mirabox HSV293S (5548:6670)
-- Ajazz AKP153 (5548:6674)
-- Ajazz AKP153E (0300:1010)
-- Ajazz AKP153R (0300:1020)
+- Redragon Streamcraft SS550 (0200:1000)
 
 ## Platform support
 
@@ -23,9 +20,9 @@ Requires OpenDeck 2.5.0 or newer
 
 ## Installation
 
-1. Download an archive from [releases](https://github.com/4ndv/opendeck-akp153/releases)
+1. Download an archive from [releases](https://github.com/MMonkeyKiller/opendeck-ss550/releases)
 2. In OpenDeck: Plugins -> Install from file
-3. Linux: Download [udev rules](./40-opendeck-akp153.rules) and install them by copying into `/etc/udev/rules.d/` and running `sudo udevadm control --reload-rules`
+3. Linux: Download [udev rules](./40-opendeck-ss550.rules) and install them by copying into `/etc/udev/rules.d/` and running `sudo udevadm control --reload-rules`
 4. Unplug and plug again the device, restart OpenDeck
 
 ## Known issues

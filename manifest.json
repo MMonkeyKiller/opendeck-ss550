@@ -1,12 +1,12 @@
 {
-  "Name": "Ajazz AKP153 / Mirabox HSV293",
-  "Description": "Device support plugin for Ajazz AKP153 (+variants)",
-  "Author": "Andrey Viktorov",
-  "Version": "0.6.0",
-  "PluginUUID": "st.lynx.plugins.opendeck-akp153",
-  "CodePathLin": "opendeck-akp153-linux",
-  "CodePathMac": "opendeck-akp153-mac",
-  "CodePathWin": "opendeck-akp153-win.exe",
+  "Name": "Redragon Streamcraft SS550",
+  "Description": "Device support plugin for the Redragon Streamcraft SS550",
+  "Author": "MonkeyKiller",
+  "Version": "1.0.0",
+  "PluginUUID": "com.monkeykiller.plugins.opendeck-ss550",
+  "CodePathLin": "opendeck-ss550-linux",
+  "CodePathMac": "opendeck-ss550-mac",
+  "CodePathWin": "opendeck-ss550-win.exe",
   "Icon": "assets/icon",
   "Category": "Hardware",
   "OS": [
@@ -15,5 +15,5 @@
     { "Platform": "windows", "MinimumVersion": "10" }
   ],
   "Actions": [],
-  "DeviceNamespace": "99"
+  "DeviceNamespace": "50"
 }
