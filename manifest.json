@@ -2,7 +2,7 @@
   "Name": "Redragon Streamcraft SS550",
   "Description": "Device support plugin for the Redragon Streamcraft SS550",
   "Author": "MonkeyKiller",
-  "Version": "1.0.0",
+  "Version": "1.0.1",
   "PluginUUID": "com.monkeykiller.plugins.opendeck-ss550",
   "CodePathLin": "opendeck-ss550-linux",
   "CodePathMac": "opendeck-ss550-mac",
