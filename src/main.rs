@@ -97,6 +97,21 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
 
         Ok(())
     }
+
+    async fn system_did_wake_up(
+        &self,
+        event: SystemDidWakeUpEvent,
+        _outbound: &mut OutboundEventManager,
+    ) -> EventHandlerResult {
+        log::debug!("System did wake up: {:#?}", event);
+
+        for device in DEVICES.read().await.values() {
+            let mut buf = vec![0x00, 0x43, 0x52, 0x54, 0x00, 0x00, 0x44, 0x49, 0x53]; // Wake Screen command
+            device.write_extended_data(&mut buf).await?;
+        }
+
+        Ok(())
+    }
 }
 
 struct ActionEventHandler {}
