@@ -15,7 +15,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     log::info!("Running device task for {:?}", candidate);
 
     // Wrap in a closure so we can use `?` operator
-    let device = async || -> Result<Device, MirajazzError> {
+    let device = async {
         let device = connect(&candidate).await?;
 
         device.set_brightness(50).await?;
@@ -23,7 +23,7 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         device.flush().await?;
 
         Ok(device)
-    }()
+    }
     .await;
 
     let device: Device = match device {
