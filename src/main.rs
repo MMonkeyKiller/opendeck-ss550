@@ -112,6 +112,24 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
 
         Ok(())
     }
+
+    async fn device_did_disconnect(
+        &self,
+        event: DeviceDidDisconnectEvent,
+        _outbound: &mut OutboundEventManager,
+    ) -> EventHandlerResult {
+        log::debug!("Device did disconnect: {:#?}", event);
+
+        if let Some(token) = TOKENS.write().await.remove(&event.device) {
+            token.cancel();
+            if let Some(device) = DEVICES.write().await.remove(&event.device) {
+                device.shutdown().await?;
+            }
+        } else {
+            log::error!("Received event for unknown device: {}", event.device);
+        }
+        Ok(())
+    }
 }
 
 struct ActionEventHandler {}
