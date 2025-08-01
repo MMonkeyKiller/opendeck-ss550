@@ -27,6 +27,10 @@ pub static TOKENS: LazyLock<RwLock<HashMap<String, CancellationToken>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 pub static TRACKER: LazyLock<Mutex<TaskTracker>> = LazyLock::new(|| Mutex::new(TaskTracker::new()));
 
+#[allow(clippy::type_complexity)]
+pub static BUTTONS: LazyLock<RwLock<HashMap<String, HashMap<u8, Vec<u8>>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
 struct GlobalEventHandler {}
 impl openaction::GlobalEventHandler for GlobalEventHandler {
     async fn plugin_ready(

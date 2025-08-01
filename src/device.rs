@@ -1,11 +1,14 @@
+use std::collections::HashMap;
+
 use data_url::DataUrl;
 use image::load_from_memory_with_format;
 use mirajazz::{device::Device, error::MirajazzError, state::DeviceStateUpdate};
 use openaction::{OUTBOUND_EVENT_MANAGER, SetImageEvent};
+use sha1::{Digest, Sha1};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    DEVICES, TOKENS,
+    BUTTONS, DEVICES, TOKENS,
     inputs::opendeck_to_device,
     mappings::{COL_COUNT, CandidateDevice, ENCODER_COUNT, IMAGE_FORMAT, KEY_COUNT, ROW_COUNT},
 };
@@ -57,6 +60,11 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     DEVICES.write().await.insert(candidate.id.clone(), device);
 
+    BUTTONS
+        .write()
+        .await
+        .insert(candidate.id.clone(), HashMap::new());
+
     tokio::select! {
         _ = device_events_task(&candidate) => {},
         _ = token.cancelled() => {}
@@ -92,6 +100,9 @@ pub async fn handle_error(id: &String, err: MirajazzError) -> bool {
 
     log::debug!("Removing device {} from the list", id);
     DEVICES.write().await.remove(id);
+
+    log::debug!("Removing buttons for device {}", id);
+    BUTTONS.write().await.remove(id);
 
     log::debug!("Finished clean-up for {}", id);
 
@@ -194,21 +205,50 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             }
 
             let image = load_from_memory_with_format(body.as_slice(), image::ImageFormat::Jpeg)?;
+            let hash = Sha1::digest(image.as_bytes()).to_vec();
+
+            if let Some(old_hash) = BUTTONS
+                .read()
+                .await
+                .get(&evt.device)
+                .and_then(|m| m.get(&position))
+            {
+                if hash == *old_hash {
+                    log::info!(
+                        "Image for button {} is the same as before, skipping",
+                        position
+                    );
+                    return Ok(());
+                }
+            }
 
             device
-                .set_button_image(opendeck_to_device(position), IMAGE_FORMAT, image)
+                .set_button_image(opendeck_to_device(position), IMAGE_FORMAT, image.clone())
                 .await?;
             device.flush().await?;
+
+            BUTTONS
+                .write()
+                .await
+                .entry(evt.device)
+                .or_insert(HashMap::new())
+                .insert(position, hash);
         }
         (Some(position), None) => {
             device
                 .clear_button_image(opendeck_to_device(position))
                 .await?;
             device.flush().await?;
+
+            if let Some(buttons) = BUTTONS.write().await.get_mut(&evt.device) {
+                buttons.remove(&position);
+            }
         }
         (None, None) => {
             device.clear_all_button_images().await?;
             device.flush().await?;
+
+            BUTTONS.write().await.remove(&evt.device);
         }
         _ => {}
     }
