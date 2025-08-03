@@ -8,12 +8,12 @@ data-url = "0.3.1"
 futures-lite = "2.6.0"
 image = { version = "0.25.6", default-features = false, features = ["bmp", "jpeg"] }
 log = "0.4.27"
-mirajazz = "0.6.2"
+mirajazz = "0.7.0"
 openaction = "1.1.5"
 sha1 = "0.10.6"
 simplelog = "0.12.2"
-tokio = { version = "1.44.2", features = ["full"] }
-tokio-util = { version = "0.7.15", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-util = { version = "0.7.16", features = ["full"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61.3", features = ["Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }
