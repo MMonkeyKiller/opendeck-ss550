@@ -2,7 +2,7 @@ use device::{handle_error, handle_set_image};
 use mirajazz::device::Device;
 use openaction::*;
 use std::{collections::HashMap, process::exit, sync::LazyLock};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::task::spawn_blocking;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use watcher::watcher_task;
@@ -29,6 +29,9 @@ pub static TRACKER: LazyLock<Mutex<TaskTracker>> = LazyLock::new(|| Mutex::new(T
 
 #[allow(clippy::type_complexity)]
 pub static BUTTONS: LazyLock<RwLock<HashMap<String, HashMap<u8, Vec<u8>>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+pub static SUSPENSION_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
 struct GlobalEventHandler {}

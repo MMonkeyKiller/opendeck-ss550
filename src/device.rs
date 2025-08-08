@@ -1,17 +1,20 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use data_url::DataUrl;
 use image::load_from_memory_with_format;
 use mirajazz::{device::Device, error::MirajazzError, state::DeviceStateUpdate};
 use openaction::{OUTBOUND_EVENT_MANAGER, SetImageEvent};
 use sha1::{Digest, Sha1};
+use tokio::{sync::mpsc, time::timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BUTTONS, DEVICES, TOKENS,
+    BUTTONS, DEVICES, SUSPENSION_CHANNELS, TOKENS,
     inputs::opendeck_to_device,
     mappings::{COL_COUNT, CandidateDevice, ENCODER_COUNT, IMAGE_FORMAT, KEY_COUNT, ROW_COUNT},
 };
+
+const IDLE_TIME: Duration = Duration::from_secs(60 * 60);
 
 /// Initializes a device and listens for events
 pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
@@ -65,12 +68,22 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         .await
         .insert(candidate.id.clone(), HashMap::new());
 
+    let (tx, rx) = mpsc::channel::<()>(10);
+
+    SUSPENSION_CHANNELS
+        .write()
+        .await
+        .insert(candidate.id.clone(), tx);
+
     tokio::select! {
+        _ = device_suspension_task(&candidate, rx) => {},
         _ = device_events_task(&candidate) => {},
         _ = token.cancelled() => {}
     };
 
     log::info!("Shutting down device {:?}", candidate);
+
+    SUSPENSION_CHANNELS.write().await.remove(&candidate.id);
 
     if let Some(device) = DEVICES.read().await.get(&candidate.id) {
         device.shutdown().await.ok();
@@ -129,6 +142,30 @@ pub async fn connect(candidate: &CandidateDevice) -> Result<Device, MirajazzErro
     }
 }
 
+/// Handles the idle time of the device
+async fn device_suspension_task(candidate: &CandidateDevice, mut rx: mpsc::Receiver<()>) {
+    log::info!("Starting device suspension task");
+
+    let mut sleeping = false;
+    while !rx.is_closed() {
+        if timeout(IDLE_TIME, rx.recv()).await.is_ok() {
+            if sleeping {
+                log::info!("Device {} is now awake", candidate.id);
+                sleeping = false;
+            }
+        } else if !sleeping {
+            log::info!("Putting device {} to sleep", candidate.id);
+
+            if let Some(device) = DEVICES.read().await.get(&candidate.id) {
+                if let Err(err) = device.sleep().await {
+                    log::error!("Failed to put device {} to sleep: {}", candidate.id, err);
+                }
+            }
+            sleeping = true;
+        }
+    }
+}
+
 /// Handles events from device to OpenDeck
 async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzError> {
     log::info!("Connecting to {} for incoming events", candidate.id);
@@ -157,6 +194,12 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
                 continue;
             }
         };
+
+        if !updates.is_empty() {
+            if let Some(tx) = SUSPENSION_CHANNELS.read().await.get(&candidate.id) {
+                let _ = tx.send(()).await;
+            }
+        }
 
         for update in updates {
             log::debug!("New update: {:#?}", update);
