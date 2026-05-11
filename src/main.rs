@@ -1,6 +1,6 @@
 use device::{handle_error, handle_set_image};
 use mirajazz::device::Device;
-use openaction::*;
+use openaction::{global_events::*, *};
 use std::{collections::HashMap, process::exit, sync::LazyLock};
 use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::task::spawn_blocking;
@@ -35,11 +35,9 @@ pub static SUSPENSION_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
 struct GlobalEventHandler {}
-impl openaction::GlobalEventHandler for GlobalEventHandler {
-    async fn plugin_ready(
-        &self,
-        _outbound: &mut openaction::OutboundEventManager,
-    ) -> EventHandlerResult {
+#[async_trait]
+impl global_events::GlobalEventHandler for GlobalEventHandler {
+    async fn plugin_ready(&self) -> OpenActionResult<()> {
         let tracker = TRACKER.lock().await.clone();
 
         let token = CancellationToken::new();
@@ -55,11 +53,7 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         Ok(())
     }
 
-    async fn set_image(
-        &self,
-        event: SetImageEvent,
-        _outbound: &mut OutboundEventManager,
-    ) -> EventHandlerResult {
+    async fn device_plugin_set_image(&self, event: SetImageEvent) -> OpenActionResult<()> {
         log::debug!("Asked to set image: {:#?}", event);
 
         // Skip knobs images
@@ -82,11 +76,10 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         Ok(())
     }
 
-    async fn set_brightness(
+    async fn device_plugin_set_brightness(
         &self,
         event: SetBrightnessEvent,
-        _outbound: &mut OutboundEventManager,
-    ) -> EventHandlerResult {
+    ) -> OpenActionResult<()> {
         log::debug!("Asked to set brightness: {:#?}", event);
 
         let id = event.device.clone();
@@ -112,32 +105,24 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         Ok(())
     }
 
-    async fn system_did_wake_up(
-        &self,
-        event: SystemDidWakeUpEvent,
-        _outbound: &mut OutboundEventManager,
-    ) -> EventHandlerResult {
+    async fn system_did_wake_up(&self, event: SystemDidWakeUpEvent) -> OpenActionResult<()> {
         log::debug!("System did wake up: {:#?}", event);
 
         for device in DEVICES.read().await.values() {
             let mut buf = vec![0x00, 0x43, 0x52, 0x54, 0x00, 0x00, 0x44, 0x49, 0x53]; // Wake Screen command
-            device.write_extended_data(&mut buf).await?;
+            let _ = device.write_extended_data(&mut buf).await;
         }
 
         Ok(())
     }
 
-    async fn device_did_disconnect(
-        &self,
-        event: DeviceDidDisconnectEvent,
-        _outbound: &mut OutboundEventManager,
-    ) -> EventHandlerResult {
+    async fn device_did_disconnect(&self, event: DeviceDidDisconnectEvent) -> OpenActionResult<()> {
         log::debug!("Device did disconnect: {:#?}", event);
 
         if let Some(token) = TOKENS.write().await.remove(&event.device) {
             token.cancel();
             if let Some(device) = DEVICES.write().await.remove(&event.device) {
-                device.shutdown().await?;
+                let _ = device.shutdown().await;
             }
         } else {
             log::error!("Received event for unknown device: {}", event.device);
@@ -145,9 +130,6 @@ impl openaction::GlobalEventHandler for GlobalEventHandler {
         Ok(())
     }
 }
-
-struct ActionEventHandler {}
-impl openaction::ActionEventHandler for ActionEventHandler {}
 
 async fn shutdown() {
     let tokens = TOKENS.write().await;
@@ -158,7 +140,8 @@ async fn shutdown() {
 }
 
 async fn connect() {
-    if let Err(error) = init_plugin(GlobalEventHandler {}, ActionEventHandler {}).await {
+    set_global_event_handler(&GlobalEventHandler {});
+    if let Err(error) = run(std::env::args().collect()).await {
         log::error!("Failed to initialize plugin: {}", error);
 
         exit(1);

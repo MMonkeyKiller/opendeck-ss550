@@ -9,7 +9,7 @@ futures-lite = "2.6.1"
 image = { version = "0.25.10", default-features = false, features = ["bmp", "jpeg"] }
 log = "0.4.29"
 mirajazz = "0.7.0"
-openaction = "1.1.5"
+openaction = "2.6.0"
 sha1 = "0.11.0"
 simplelog = "0.12.2"
 tokio = { version = "1.52.3", features = ["full"] }
