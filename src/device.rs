@@ -9,12 +9,13 @@ use tokio::{sync::mpsc, time::timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    BUTTONS, DEVICES, SUSPENSION_CHANNELS, TOKENS,
+    BUTTONS, DEVICES, FLUSH_CHANNELS, SUSPENSION_CHANNELS, TOKENS,
     inputs::opendeck_to_device,
     mappings::{COL_COUNT, CandidateDevice, ENCODER_COUNT, IMAGE_FORMAT, KEY_COUNT, ROW_COUNT},
 };
 
 const IDLE_TIME: Duration = Duration::from_secs(60 * 60);
+const FLUSH_DEBOUNCE_TIME: Duration = Duration::from_millis(70);
 
 /// Initializes a device and listens for events
 pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
@@ -65,15 +66,23 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
         .await
         .insert(candidate.id.clone(), HashMap::new());
 
-    let (tx, rx) = mpsc::channel::<()>(10);
+    let (suspension_tx, suspension_rx) = mpsc::channel::<()>(10);
 
     SUSPENSION_CHANNELS
         .write()
         .await
-        .insert(candidate.id.clone(), tx);
+        .insert(candidate.id.clone(), suspension_tx);
+
+    let (flush_tx, flush_rx) = mpsc::channel::<()>(10);
+
+    FLUSH_CHANNELS
+        .write()
+        .await
+        .insert(candidate.id.clone(), flush_tx);
 
     tokio::select! {
-        _ = device_suspension_task(&candidate, rx) => {},
+        _ = device_suspension_task(&candidate, suspension_rx) => {},
+        _ = device_flush_debouncer_task(&candidate, flush_rx) => {},
         _ = device_events_task(&candidate) => {},
         _ = token.cancelled() => {}
     };
@@ -157,6 +166,33 @@ async fn device_suspension_task(candidate: &CandidateDevice, mut rx: mpsc::Recei
                 }
             }
             sleeping = true;
+        }
+    }
+}
+
+/// Debounces flush events
+async fn device_flush_debouncer_task(candidate: &CandidateDevice, mut rx: mpsc::Receiver<()>) {
+    log::info!("Starting device flush debouncer task");
+
+    while let Some(()) = rx.recv().await {
+        log::info!("First flush event received");
+
+        // Debounce flush events (but not too much)
+        for _ in 0..8 {
+            if timeout(FLUSH_DEBOUNCE_TIME, rx.recv()).await.is_err() {
+                break;
+            }
+        }
+
+        log::info!("Sending flush event for {}", candidate.id);
+        if let Some(device) = DEVICES.read().await.get(&candidate.id) {
+            if let Err(err) = device.flush().await {
+                log::error!(
+                    "Failed to send flush event for device {}: {}",
+                    candidate.id,
+                    err
+                );
+            }
         }
     }
 }
@@ -258,7 +294,11 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device
                 .set_button_image(opendeck_to_device(position), IMAGE_FORMAT, image.clone())
                 .await?;
-            device.flush().await?;
+            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
+                if let Err(err) = tx.send(()).await {
+                    device.flush().await?;
+                }
+            }
 
             BUTTONS
                 .write()
@@ -271,15 +311,25 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device
                 .clear_button_image(opendeck_to_device(position))
                 .await?;
-            device.flush().await?;
+            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
+                if let Err(err) = tx.send(()).await {
+                    device.flush().await?;
+                }
+            }
 
             if let Some(buttons) = BUTTONS.write().await.get_mut(&evt.device) {
                 buttons.remove(&position);
             }
         }
         (None, None) => {
+            device.flush().await?; // Manually flush to display the pressed button
+
             device.clear_all_button_images().await?;
-            device.flush().await?;
+            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
+                if let Err(err) = tx.send(()).await {
+                    device.flush().await?;
+                }
+            }
 
             BUTTONS.write().await.remove(&evt.device);
         }

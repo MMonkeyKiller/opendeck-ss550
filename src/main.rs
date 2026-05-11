@@ -34,6 +34,9 @@ pub static BUTTONS: LazyLock<RwLock<HashMap<String, HashMap<u8, Vec<u8>>>>> =
 pub static SUSPENSION_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
+pub static FLUSH_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
 struct GlobalEventHandler {}
 #[async_trait]
 impl global_events::GlobalEventHandler for GlobalEventHandler {
