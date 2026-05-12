@@ -127,14 +127,10 @@ pub async fn handle_error(id: &String, err: MirajazzError) -> bool {
 }
 
 pub async fn connect(candidate: &CandidateDevice) -> Result<Device, MirajazzError> {
-    let result = Device::connect(
-        &candidate.dev,
-        candidate.kind.is_v2(),
-        candidate.kind.supports_both_states(),
-        KEY_COUNT,
-        ENCODER_COUNT,
-    )
-    .await;
+    let result = Device::connect(&candidate.dev, 1, KEY_COUNT, ENCODER_COUNT)
+        .await
+        .map(|d| d.with_supports_both_keypress_states(true))
+        .map(|d| d.with_supports_both_encoder_states(true));
 
     match result {
         Ok(device) => Ok(device),

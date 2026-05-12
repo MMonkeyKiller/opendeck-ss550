@@ -8,7 +8,7 @@ data-url = "0.3.2"
 futures-lite = "2.6.1"
 image = { version = "0.25.10", default-features = false, features = ["bmp", "jpeg"] }
 log = "0.4.29"
-mirajazz = "0.7.0"
+mirajazz = "0.14.0"
 openaction = "2.6.0"
 sha1 = "0.11.0"
 simplelog = "0.12.2"
