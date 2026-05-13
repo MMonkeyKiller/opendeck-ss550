@@ -172,12 +172,10 @@ async fn device_flush_debouncer_task(candidate: &CandidateDevice, mut rx: mpsc::
     while let Some(()) = rx.recv().await {
         log::info!("First flush event received");
 
-        // Debounce flush events (but not too much)
-        for _ in 0..8 {
-            if timeout(FLUSH_DEBOUNCE_TIME, rx.recv()).await.is_err() {
-                break;
-            }
-        }
+        let _ = timeout(FLUSH_DEBOUNCE_TIME, async {
+            while rx.recv().await.is_some() {}
+        })
+        .await;
 
         log::info!("Sending flush event for {}", candidate.id);
         if let Some(device) = DEVICES.read().await.get(&candidate.id)
