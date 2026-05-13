@@ -276,7 +276,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
 
             BUTTONS
                 .entry(evt.device)
-                .or_insert(HashMap::new())
+                .or_insert(HashMap::with_capacity(KEY_COUNT))
                 .insert(position, hash.into());
         }
         (Some(position), None) => {
