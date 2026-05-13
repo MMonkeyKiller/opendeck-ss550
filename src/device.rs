@@ -293,6 +293,15 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
                 .insert(position, hash.into());
         }
         (Some(position), None) => {
+            if BUTTONS
+                .read()
+                .await
+                .get(&evt.device)
+                .is_none_or(|d| d.get(&position).is_none())
+            {
+                log::info!("Image for button {} is already empty, skipping", position);
+                return Ok(());
+            }
             device
                 .clear_button_image(opendeck_to_device(position))
                 .await?;
@@ -305,6 +314,10 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
         (None, None) => {
             device.flush().await?; // Manually flush to display the pressed button
 
+            if BUTTONS.read().await.get(&evt.device).is_none() {
+                log::info!("Buttons are already empty, skipping");
+                return Ok(());
+            }
             device.clear_all_button_images().await?;
             device_flush(&evt.device, device).await?;
 
