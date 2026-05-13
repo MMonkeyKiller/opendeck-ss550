@@ -297,8 +297,6 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             }
         }
         (None, None) => {
-            device.flush().await?; // Manually flush to display the pressed button
-
             if BUTTONS.get(&evt.device).is_none() {
                 log::info!("Buttons are already empty, skipping");
                 return Ok(());
