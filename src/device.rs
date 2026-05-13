@@ -155,10 +155,10 @@ async fn device_suspension_task(candidate: &CandidateDevice, mut rx: mpsc::Recei
         } else if !sleeping {
             log::info!("Putting device {} to sleep", candidate.id);
 
-            if let Some(device) = DEVICES.read().await.get(&candidate.id) {
-                if let Err(err) = device.sleep().await {
-                    log::error!("Failed to put device {} to sleep: {}", candidate.id, err);
-                }
+            if let Some(device) = DEVICES.read().await.get(&candidate.id)
+                && let Err(err) = device.sleep().await
+            {
+                log::error!("Failed to put device {} to sleep: {}", candidate.id, err);
             }
             sleeping = true;
         }
@@ -180,14 +180,14 @@ async fn device_flush_debouncer_task(candidate: &CandidateDevice, mut rx: mpsc::
         }
 
         log::info!("Sending flush event for {}", candidate.id);
-        if let Some(device) = DEVICES.read().await.get(&candidate.id) {
-            if let Err(err) = device.flush().await {
-                log::error!(
-                    "Failed to send flush event for device {}: {}",
-                    candidate.id,
-                    err
-                );
-            }
+        if let Some(device) = DEVICES.read().await.get(&candidate.id)
+            && let Err(err) = device.flush().await
+        {
+            log::error!(
+                "Failed to send flush event for device {}: {}",
+                candidate.id,
+                err
+            );
         }
     }
 }
@@ -221,10 +221,10 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
             }
         };
 
-        if !updates.is_empty() {
-            if let Some(tx) = SUSPENSION_CHANNELS.read().await.get(&candidate.id) {
-                let _ = tx.send(()).await;
-            }
+        if !updates.is_empty()
+            && let Some(tx) = SUSPENSION_CHANNELS.read().await.get(&candidate.id)
+        {
+            let _ = tx.send(()).await;
         }
 
         for update in updates {
@@ -285,11 +285,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device
                 .set_button_image(opendeck_to_device(position), IMAGE_FORMAT, image.clone())
                 .await?;
-            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
-                if let Err(err) = tx.send(()).await {
-                    device.flush().await?;
-                }
-            }
+            device_flush(&evt.device, device).await?;
 
             BUTTONS
                 .write()
@@ -302,11 +298,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device
                 .clear_button_image(opendeck_to_device(position))
                 .await?;
-            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
-                if let Err(err) = tx.send(()).await {
-                    device.flush().await?;
-                }
-            }
+            device_flush(&evt.device, device).await?;
 
             if let Some(buttons) = BUTTONS.write().await.get_mut(&evt.device) {
                 buttons.remove(&position);
@@ -316,11 +308,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device.flush().await?; // Manually flush to display the pressed button
 
             device.clear_all_button_images().await?;
-            if let Some(tx) = FLUSH_CHANNELS.read().await.get(&evt.device) {
-                if let Err(err) = tx.send(()).await {
-                    device.flush().await?;
-                }
-            }
+            device_flush(&evt.device, device).await?;
 
             BUTTONS.write().await.remove(&evt.device);
         }
@@ -328,4 +316,11 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
     }
 
     Ok(())
+}
+
+async fn device_flush(device_id: &str, device: &Device) -> Result<(), MirajazzError> {
+    match FLUSH_CHANNELS.read().await.get(device_id) {
+        Some(tx) if tx.send(()).await.is_err() => device.flush().await,
+        _ => Ok(()),
+    }
 }
