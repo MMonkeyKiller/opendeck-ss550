@@ -3,7 +3,6 @@ use mirajazz::device::Device;
 use openaction::{global_events::*, *};
 use std::{collections::HashMap, process::exit, sync::LazyLock};
 use tokio::sync::{Mutex, RwLock, mpsc};
-use tokio::task::spawn_blocking;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use watcher::watcher_task;
 
@@ -162,7 +161,7 @@ async fn sigterm() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(target_os = "windows")]
 async fn sigterm() -> Result<(), Box<dyn std::error::Error>> {
-    spawn_blocking(|| {
+    tokio::task::spawn_blocking(|| {
         log::debug!("Creating dummy window to catch messages");
         let instance = unsafe { GetModuleHandleA(None).unwrap_or_default() };
         let window_class = s!("__ss550_event_listener");
