@@ -570,6 +570,7 @@ name = "opendeck-ss550"
 version = "1.0.3"
 dependencies = [
  "blake3",
+ "dashmap",
  "data-url",
  "futures-lite",
  "image",

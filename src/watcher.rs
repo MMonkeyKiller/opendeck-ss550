@@ -71,10 +71,7 @@ pub async fn watcher_task(token: CancellationToken) -> Result<(), MirajazzError>
 
         let token = CancellationToken::new();
 
-        TOKENS
-            .write()
-            .await
-            .insert(candidate.id.clone(), token.clone());
+        TOKENS.insert(candidate.id.clone(), token.clone());
 
         tracker.spawn(device_task(candidate, token));
     }
@@ -97,16 +94,13 @@ pub async fn watcher_task(token: CancellationToken) -> Result<(), MirajazzError>
                 DeviceLifecycleEvent::Connected(info) => {
                     if let Some(candidate) = device_info_to_candidate(info) {
                         // Don't add existing device again
-                        if DEVICES.read().await.contains_key(&candidate.id) {
+                        if DEVICES.contains_key(&candidate.id) {
                             continue;
                         }
 
                         let token = CancellationToken::new();
 
-                        TOKENS
-                            .write()
-                            .await
-                            .insert(candidate.id.clone(), token.clone());
+                        TOKENS.insert(candidate.id.clone(), token.clone());
 
                         log::debug!("Spawning task for new device: {:?}", candidate);
                         tracker.spawn(device_task(candidate, token));
@@ -116,12 +110,12 @@ pub async fn watcher_task(token: CancellationToken) -> Result<(), MirajazzError>
                 DeviceLifecycleEvent::Disconnected(info) => {
                     let id = get_device_id(&info).unwrap();
 
-                    if let Some(token) = TOKENS.write().await.remove(&id) {
+                    if let Some((_, token)) = TOKENS.remove(&id) {
                         log::info!("Sending cancel request for {}", id);
                         token.cancel();
                     }
 
-                    DEVICES.write().await.remove(&id);
+                    DEVICES.remove(&id);
 
                     let _ = unregister_device(id.clone()).await;
 

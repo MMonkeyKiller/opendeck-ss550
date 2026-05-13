@@ -58,26 +58,17 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
     .await
     .unwrap();
 
-    DEVICES.write().await.insert(candidate.id.clone(), device);
+    DEVICES.insert(candidate.id.clone(), device);
 
-    BUTTONS
-        .write()
-        .await
-        .insert(candidate.id.clone(), HashMap::new());
+    BUTTONS.insert(candidate.id.clone(), HashMap::new());
 
     let (suspension_tx, suspension_rx) = mpsc::channel::<()>(10);
 
-    SUSPENSION_CHANNELS
-        .write()
-        .await
-        .insert(candidate.id.clone(), suspension_tx);
+    SUSPENSION_CHANNELS.insert(candidate.id.clone(), suspension_tx);
 
     let (flush_tx, flush_rx) = mpsc::channel::<()>(10);
 
-    FLUSH_CHANNELS
-        .write()
-        .await
-        .insert(candidate.id.clone(), flush_tx);
+    FLUSH_CHANNELS.insert(candidate.id.clone(), flush_tx);
 
     tokio::select! {
         _ = device_suspension_task(&candidate, suspension_rx) => {},
@@ -88,9 +79,9 @@ pub async fn device_task(candidate: CandidateDevice, token: CancellationToken) {
 
     log::info!("Shutting down device {:?}", candidate);
 
-    SUSPENSION_CHANNELS.write().await.remove(&candidate.id);
+    SUSPENSION_CHANNELS.remove(&candidate.id);
 
-    if let Some(device) = DEVICES.read().await.get(&candidate.id) {
+    if let Some(device) = DEVICES.get(&candidate.id) {
         device.shutdown().await.ok();
     }
 
@@ -110,15 +101,15 @@ pub async fn handle_error(id: &String, err: MirajazzError) -> bool {
     unregister_device(id.clone()).await.unwrap();
 
     log::debug!("Cancelling tasks for device {}", id);
-    if let Some(token) = TOKENS.read().await.get(id) {
+    if let Some(token) = TOKENS.get(id) {
         token.cancel();
     }
 
     log::debug!("Removing device {} from the list", id);
-    DEVICES.write().await.remove(id);
+    DEVICES.remove(id);
 
     log::debug!("Removing buttons for device {}", id);
-    BUTTONS.write().await.remove(id);
+    BUTTONS.remove(id);
 
     log::debug!("Finished clean-up for {}", id);
 
@@ -155,7 +146,7 @@ async fn device_suspension_task(candidate: &CandidateDevice, mut rx: mpsc::Recei
         } else if !sleeping {
             log::info!("Putting device {} to sleep", candidate.id);
 
-            if let Some(device) = DEVICES.read().await.get(&candidate.id)
+            if let Some(device) = DEVICES.get(&candidate.id)
                 && let Err(err) = device.sleep().await
             {
                 log::error!("Failed to put device {} to sleep: {}", candidate.id, err);
@@ -178,7 +169,7 @@ async fn device_flush_debouncer_task(candidate: &CandidateDevice, mut rx: mpsc::
         .await;
 
         log::info!("Sending flush event for {}", candidate.id);
-        if let Some(device) = DEVICES.read().await.get(&candidate.id)
+        if let Some(device) = DEVICES.get(&candidate.id)
             && let Err(err) = device.flush().await
         {
             log::error!(
@@ -194,12 +185,10 @@ async fn device_flush_debouncer_task(candidate: &CandidateDevice, mut rx: mpsc::
 async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzError> {
     log::info!("Connecting to {} for incoming events", candidate.id);
 
-    let devices_lock = DEVICES.read().await;
-    let reader = match devices_lock.get(&candidate.id) {
+    let reader = match DEVICES.get(&candidate.id) {
         Some(device) => device.get_reader(crate::inputs::process_input),
         None => return Ok(()),
     };
-    drop(devices_lock);
 
     log::info!("Connected to {} for incoming events", candidate.id);
 
@@ -220,7 +209,7 @@ async fn device_events_task(candidate: &CandidateDevice) -> Result<(), MirajazzE
         };
 
         if !updates.is_empty()
-            && let Some(tx) = SUSPENSION_CHANNELS.read().await.get(&candidate.id)
+            && let Some(tx) = SUSPENSION_CHANNELS.get(&candidate.id)
         {
             let _ = tx.send(()).await;
         }
@@ -268,7 +257,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
 
             let hash = blake3::hash(body.as_slice());
 
-            if let Some(m) = BUTTONS.read().await.get(&evt.device)
+            if let Some(m) = BUTTONS.get(&evt.device)
                 && let Some(old_hash) = m.get(&position)
                 && hash == *old_hash
             {
@@ -286,16 +275,12 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
             device_flush(&evt.device, device).await?;
 
             BUTTONS
-                .write()
-                .await
                 .entry(evt.device)
                 .or_insert(HashMap::new())
                 .insert(position, hash.into());
         }
         (Some(position), None) => {
             if BUTTONS
-                .read()
-                .await
                 .get(&evt.device)
                 .is_none_or(|d| d.get(&position).is_none())
             {
@@ -307,21 +292,21 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
                 .await?;
             device_flush(&evt.device, device).await?;
 
-            if let Some(buttons) = BUTTONS.write().await.get_mut(&evt.device) {
+            if let Some(mut buttons) = BUTTONS.get_mut(&evt.device) {
                 buttons.remove(&position);
             }
         }
         (None, None) => {
             device.flush().await?; // Manually flush to display the pressed button
 
-            if BUTTONS.read().await.get(&evt.device).is_none() {
+            if BUTTONS.get(&evt.device).is_none() {
                 log::info!("Buttons are already empty, skipping");
                 return Ok(());
             }
             device.clear_all_button_images().await?;
             device_flush(&evt.device, device).await?;
 
-            BUTTONS.write().await.remove(&evt.device);
+            BUTTONS.remove(&evt.device);
         }
         _ => {}
     }
@@ -330,7 +315,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
 }
 
 async fn device_flush(device_id: &str, device: &Device) -> Result<(), MirajazzError> {
-    match FLUSH_CHANNELS.read().await.get(device_id) {
+    match FLUSH_CHANNELS.get(device_id) {
         Some(tx) if tx.send(()).await.is_err() => device.flush().await,
         _ => Ok(()),
     }

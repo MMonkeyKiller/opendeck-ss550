@@ -1,8 +1,9 @@
+use dashmap::DashMap;
 use device::{handle_error, handle_set_image};
 use mirajazz::device::Device;
 use openaction::{global_events::*, *};
 use std::{collections::HashMap, process::exit, sync::LazyLock};
-use tokio::sync::{Mutex, RwLock, mpsc};
+use tokio::sync::{Mutex, mpsc};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use watcher::watcher_task;
 
@@ -20,21 +21,17 @@ mod inputs;
 mod mappings;
 mod watcher;
 
-pub static DEVICES: LazyLock<RwLock<HashMap<String, Device>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
-pub static TOKENS: LazyLock<RwLock<HashMap<String, CancellationToken>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+pub static DEVICES: LazyLock<DashMap<String, Device>> = LazyLock::new(DashMap::new);
+pub static TOKENS: LazyLock<DashMap<String, CancellationToken>> = LazyLock::new(DashMap::new);
 pub static TRACKER: LazyLock<Mutex<TaskTracker>> = LazyLock::new(|| Mutex::new(TaskTracker::new()));
 
-#[allow(clippy::type_complexity)]
-pub static BUTTONS: LazyLock<RwLock<HashMap<String, HashMap<u8, [u8; 32]>>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+pub static BUTTONS: LazyLock<DashMap<String, HashMap<u8, [u8; 32]>>> = LazyLock::new(DashMap::new);
 
-pub static SUSPENSION_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+pub static SUSPENSION_CHANNELS: LazyLock<DashMap<String, mpsc::Sender<()>>> =
+    LazyLock::new(DashMap::new);
 
-pub static FLUSH_CHANNELS: LazyLock<RwLock<HashMap<String, mpsc::Sender<()>>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+pub static FLUSH_CHANNELS: LazyLock<DashMap<String, mpsc::Sender<()>>> =
+    LazyLock::new(DashMap::new);
 
 struct GlobalEventHandler {}
 #[async_trait]
@@ -45,10 +42,7 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
         let token = CancellationToken::new();
         tracker.spawn(watcher_task(token.clone()));
 
-        TOKENS
-            .write()
-            .await
-            .insert("_watcher_task".to_string(), token);
+        TOKENS.insert("_watcher_task".to_string(), token);
 
         log::info!("Plugin initialized");
 
@@ -66,8 +60,8 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
 
         let id = event.device.clone();
 
-        if let Some(device) = DEVICES.read().await.get(&event.device) {
-            handle_set_image(device, event)
+        if let Some(device) = DEVICES.get(&event.device) {
+            handle_set_image(&device, event)
                 .await
                 .map_err(async |err| handle_error(&id, err).await)
                 .ok();
@@ -86,7 +80,7 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
 
         let id = event.device.clone();
 
-        if let Some(device) = DEVICES.read().await.get(&event.device) {
+        if let Some(device) = DEVICES.get(&event.device) {
             if event.brightness == 0 {
                 device
                     .sleep()
@@ -110,7 +104,7 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
     async fn system_did_wake_up(&self, event: SystemDidWakeUpEvent) -> OpenActionResult<()> {
         log::debug!("System did wake up: {:#?}", event);
 
-        for device in DEVICES.read().await.values() {
+        for device in DEVICES.iter() {
             let mut buf = vec![0x00, 0x43, 0x52, 0x54, 0x00, 0x00, 0x44, 0x49, 0x53]; // Wake Screen command
             let _ = device.write_extended_data(&mut buf).await;
         }
@@ -121,9 +115,9 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
     async fn device_did_disconnect(&self, event: DeviceDidDisconnectEvent) -> OpenActionResult<()> {
         log::debug!("Device did disconnect: {:#?}", event);
 
-        if let Some(token) = TOKENS.write().await.remove(&event.device) {
+        if let Some((_, token)) = TOKENS.remove(&event.device) {
             token.cancel();
-            if let Some(device) = DEVICES.write().await.remove(&event.device) {
+            if let Some((_, device)) = DEVICES.remove(&event.device) {
                 let _ = device.shutdown().await;
             }
         } else {
@@ -134,10 +128,8 @@ impl global_events::GlobalEventHandler for GlobalEventHandler {
 }
 
 async fn shutdown() {
-    let tokens = TOKENS.write().await;
-
-    for (_, token) in tokens.iter() {
-        token.cancel();
+    for entry in TOKENS.iter() {
+        entry.value().cancel();
     }
 }
 

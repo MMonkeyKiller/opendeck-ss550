@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 blake3 = "1.8.5"
+dashmap = "6.1.0"
 data-url = "0.3.2"
 futures-lite = "2.6.1"
 image = { version = "0.25.10", default-features = false, features = ["bmp", "jpeg"] }
