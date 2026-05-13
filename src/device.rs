@@ -4,7 +4,6 @@ use data_url::DataUrl;
 use image::load_from_memory_with_format;
 use mirajazz::{device::Device, error::MirajazzError, state::DeviceStateUpdate};
 use openaction::{device_plugin::*, global_events::SetImageEvent};
-use sha1::{Digest, Sha1};
 use tokio::{sync::mpsc, time::timeout};
 use tokio_util::sync::CancellationToken;
 
@@ -269,24 +268,20 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
                 return Ok(()); // Not a fatal error, enough to just log it
             }
 
-            let image = load_from_memory_with_format(body.as_slice(), image::ImageFormat::Jpeg)?;
-            let hash = Sha1::digest(image.as_bytes()).to_vec();
+            let hash = blake3::hash(body.as_slice());
 
-            if let Some(old_hash) = BUTTONS
-                .read()
-                .await
-                .get(&evt.device)
-                .and_then(|m| m.get(&position))
+            if let Some(m) = BUTTONS.read().await.get(&evt.device)
+                && let Some(old_hash) = m.get(&position)
+                && hash == *old_hash
             {
-                if hash == *old_hash {
-                    log::info!(
-                        "Image for button {} is the same as before, skipping",
-                        position
-                    );
-                    return Ok(());
-                }
+                log::info!(
+                    "Image for button {} is the same as before, skipping",
+                    position
+                );
+                return Ok(());
             }
 
+            let image = load_from_memory_with_format(body.as_slice(), image::ImageFormat::Jpeg)?;
             device
                 .set_button_image(opendeck_to_device(position), IMAGE_FORMAT, image.clone())
                 .await?;
@@ -301,7 +296,7 @@ pub async fn handle_set_image(device: &Device, evt: SetImageEvent) -> Result<(),
                 .await
                 .entry(evt.device)
                 .or_insert(HashMap::new())
-                .insert(position, hash);
+                .insert(position, hash.into());
         }
         (Some(position), None) => {
             device
