@@ -57,7 +57,14 @@ impl Kind {
     }
 
     pub fn is_v2(&self) -> bool {
-        false // In the future there may be "v2" devices, so lay some groundwork
+        matches!(self, Self::SS550V3)
+    }
+
+    pub fn protocol_version(&self) -> usize {
+        match self {
+            Self::SS550 => 1,
+            Self::SS550V3 => 2,
+        }
     }
 
     /// There is no point relying on manufacturer/device names reported by the USB stack,
