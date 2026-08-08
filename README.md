@@ -11,6 +11,7 @@ Requires OpenDeck 2.5.0 or newer
 ## Supported devices
 
 - Redragon Streamcraft SS550 (0200:1000)
+- Redragon Streamcraft SS550 v3 (0200:3000)
 
 ## Platform support
 
