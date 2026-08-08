@@ -22,16 +22,19 @@ pub const IMAGE_FORMAT: ImageFormat = ImageFormat {
 #[derive(Debug, Clone)]
 pub enum Kind {
     SS550,
+    SS550V3,
 }
 
 pub const SS550_VID: u16 = 0x0200;
 
 pub const SS550_PID: u16 = 0x1000;
+pub const SS550_V3_PID: u16 = 0x3000;
 
 // Map all queries to usage page 65440 and usage id 1 for now
 pub const SS550_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, SS550_VID, SS550_PID);
+pub const SS550_V3_QUERY: DeviceQuery = DeviceQuery::new(65440, 1, SS550_VID, SS550_V3_PID);
 
-pub const QUERIES: [DeviceQuery; 1] = [SS550_QUERY];
+pub const QUERIES: [DeviceQuery; 2] = [SS550_QUERY, SS550_V3_QUERY];
 
 impl Kind {
     /// Matches devices VID+PID pairs to correct kinds
@@ -39,6 +42,7 @@ impl Kind {
         match vid {
             SS550_VID => match pid {
                 SS550_PID => Some(Kind::SS550),
+                SS550_V3_PID => Some(Kind::SS550V3),
                 _ => None,
             },
 
@@ -53,7 +57,14 @@ impl Kind {
     }
 
     pub fn is_v2(&self) -> bool {
-        false // In the future there may be "v2" devices, so lay some groundwork
+        matches!(self, Self::SS550V3)
+    }
+
+    pub fn protocol_version(&self) -> usize {
+        match self {
+            Self::SS550 => 1,
+            Self::SS550V3 => 2,
+        }
     }
 
     /// There is no point relying on manufacturer/device names reported by the USB stack,
@@ -61,6 +72,7 @@ impl Kind {
     pub fn human_name(&self) -> String {
         match &self {
             Self::SS550 => "Redragon Streamcraft SS550",
+            Self::SS550V3 => "Redragon Streamcraft SS550 v3",
         }
         .to_string()
     }
@@ -70,6 +82,7 @@ impl Kind {
     pub fn id_suffix(&self) -> String {
         match &self {
             Self::SS550 => "SS550",
+            Self::SS550V3 => "SS550V3",
         }
         .to_string()
     }
