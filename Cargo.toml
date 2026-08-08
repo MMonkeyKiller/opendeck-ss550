@@ -4,17 +4,17 @@ version = "1.0.3"
 edition = "2024"
 
 [dependencies]
-blake3 = "1.8.5"
-dashmap = "6.1.0"
+blake3 = "1.8.6"
+dashmap = "6.2.1"
 data-url = "0.3.2"
 futures-lite = "2.6.1"
 image = { version = "0.25.10", default-features = false, features = ["bmp", "jpeg"] }
-log = "0.4.29"
+log = "0.4.33"
 mirajazz = "0.14.0"
-openaction = "2.6.0"
+openaction = "2.7.0"
 simplelog = "0.12.2"
-tokio = { version = "1.52.3", features = ["full"] }
-tokio-util = { version = "0.7.18", features = ["full"] }
+tokio = { version = "1.53.1", features = ["full"] }
+tokio-util = { version = "0.7.19", features = ["full"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }
